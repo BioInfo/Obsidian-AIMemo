@@ -1,0 +1,80 @@
+/* Recording status indicator */
+.recording-active .ribbon-button[aria-label="Start Voice Recording"] {
+    color: var(--color-red);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Recording timer */
+.voice-memo-timer {
+    font-family: var(--font-monospace);
+    color: var(--text-muted);
+    font-size: 0.8em;
+    margin-left: 8px;
+}
+
+/* Settings styles */
+.voice-memo-settings {
+    padding: 12px;
+}
+
+.voice-memo-settings .setting-item {
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 12px;
+}
+
+.voice-memo-settings .setting-item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+/* Recording status message */
+.voice-memo-status {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    margin: 8px 0;
+    border-radius: 4px;
+    background-color: var(--background-modifier-success);
+}
+
+.voice-memo-status.error {
+    background-color: var(--background-modifier-error);
+}
+
+/* Processing indicator */
+.voice-memo-processing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background-color: var(--background-modifier-cover);
+    border-radius: 4px;
+}
+
+.voice-memo-processing .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--text-muted);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

@@ -1,0 +1,22 @@
+{
+	"id": "obsidian-ai-voice-memo",
+	"name": "AI Voice Memo",
+	"version": "0.1.0",
+	"minAppVersion": "1.0.0",
+	"description": "Record, transcribe, and organize voice memos with AI-powered features",
+	"author": "J&S Group, LLC",
+	"authorUrl": "https://github.com/BioInfo",
+	"isDesktopOnly": false,
+	"fundingUrl": {
+		"GitHub Sponsor": "https://github.com/sponsors/BioInfo"
+	},
+	"repository": "https://github.com/BioInfo/Obsidian-AIMemo",
+	"keywords": [
+		"voice",
+		"memo",
+		"transcription",
+		"ai",
+		"whisper",
+		"recording"
+	]
+}
