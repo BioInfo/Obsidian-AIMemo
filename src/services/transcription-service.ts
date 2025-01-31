@@ -4,6 +4,7 @@ import type { AiVoiceMemoSettings } from '../types/settings';
 import { TranscriptionError, TranscriptionErrorCode } from '../utils/errors';
 import { WhisperAPIClient } from './whisper-api-client';
 import { WhisperLocalService } from './whisper-local-service';
+import { TextAnalysisService } from './text-analysis-service';
 
 /**
  * Represents a transcription job in the queue
@@ -27,11 +28,13 @@ export class TranscriptionService {
     private isProcessing: boolean = false;
     private apiClient: WhisperAPIClient;
     private localService: WhisperLocalService;
+    private analysisService: TextAnalysisService;
 
     constructor(plugin: AiVoiceMemoPlugin) {
         this.plugin = plugin;
         this.apiClient = new WhisperAPIClient(this.plugin.settings.openaiApiKey);
         this.localService = new WhisperLocalService(this.plugin);
+        this.analysisService = new TextAnalysisService(this.plugin);
     }
 
     /**
@@ -196,9 +199,14 @@ export class TranscriptionService {
             );
         }
 
+        // Analyze transcription for tasks and key points
+        const analysis = this.analysisService.analyze(job.result);
+        
         const timestamp = new Date(job.timestamp);
         const fileName = `voice-memo-${timestamp.toISOString()}.md`;
-        const content = [
+        
+        // Build note content
+        const contentParts = [
             '---',
             'type: voice-memo',
             `created: ${timestamp.toISOString()}`,
@@ -206,12 +214,33 @@ export class TranscriptionService {
             '',
             '# Voice Memo Transcription',
             '',
-            job.result
-        ].join('\n');
+            job.result,
+            ''
+        ];
+
+        // Add extracted tasks if enabled
+        if (this.plugin.settings.analysis.extractTasks && analysis.tasks.length > 0) {
+            contentParts.push(
+                '',
+                '## Tasks',
+                ...this.analysisService.formatTasks(analysis.tasks),
+                ''
+            );
+        }
+
+        // Add key points if enabled
+        if (this.plugin.settings.analysis.extractKeyPoints && analysis.keyPoints && analysis.keyPoints.length > 0) {
+            contentParts.push(
+                '',
+                '## Key Points',
+                ...analysis.keyPoints.map(point => `- ${point}`),
+                ''
+            );
+        }
 
         await this.plugin.app.vault.create(
             `${this.plugin.settings.memoStoragePath}/${fileName}`,
-            content
+            contentParts.join('\n')
         );
     }
 
@@ -240,5 +269,6 @@ export class TranscriptionService {
         this.queue = [];
         this.isProcessing = false;
         this.localService.cleanup();
+        // No cleanup needed for analysisService as it's stateless
     }
 }

@@ -31,7 +31,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project structure documentation
 - Development setup instructions
 
-## [Unreleased]
+## [0.1.0-alpha.3] - 2025-01-31
+
+### Added
+- Local Whisper model infrastructure with Web Worker support
+- Local model configuration options (threads, device, language)
+- Worker-based transcription processing
+- Enhanced settings UI for local model configuration
+
+### Changed
+- Improved error handling for both API and local transcription
+- Updated settings organization with conditional sections
+- Enhanced worker communication system
+
+## [0.1.0-alpha.2] - 2025-01-31
+
 ### Added
 - OpenAI Whisper API integration with queue management
 - API key configuration in settings
@@ -42,9 +56,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced settings UI with organized sections
 - Improved error handling for API interactions
 
-### Planned
-- Local Whisper model support
+## [0.1.0-alpha.4] - 2025-01-31
+
+### Added
 - Task extraction from transcriptions
+- Key points identification
+- Configurable task detection settings
+- Task priority and due date detection
+- Context-aware task extraction
+- Enhanced note formatting with tasks and key points
+
+### Changed
+- Updated settings UI with analysis configuration
+- Improved note creation with structured sections
+- Enhanced error handling for analysis features
+
+## [Unreleased]
+### Planned
 - Smart summaries of voice memos
 - Mobile-specific UI improvements
 - Cross-platform testing and optimization

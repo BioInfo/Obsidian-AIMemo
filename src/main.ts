@@ -304,5 +304,72 @@ export class AiVoiceMemoSettingTab extends PluginSettingTab {
                     this.plugin.settings.audioQuality = value as 'low' | 'medium' | 'high';
                     await this.plugin.saveSettings();
                 }));
+
+        // Analysis Configuration Section
+        containerEl.createEl('h3', { text: 'Analysis Configuration' });
+
+        new Setting(containerEl)
+            .setName('Extract Tasks')
+            .setDesc('Automatically identify and extract tasks from transcriptions')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.analysis.extractTasks)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysis.extractTasks = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Extract Key Points')
+            .setDesc('Identify and extract key points from transcriptions')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.analysis.extractKeyPoints)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysis.extractKeyPoints = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Include Task Context')
+            .setDesc('Include surrounding context with extracted tasks')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.analysis.includeTaskContext)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysis.includeTaskContext = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Include Task Priority')
+            .setDesc('Detect and include task priority levels')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.analysis.includeTaskPriority)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysis.includeTaskPriority = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Include Task Dates')
+            .setDesc('Extract and include due dates from tasks')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.analysis.includeTaskDates)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysis.includeTaskDates = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Task Keywords')
+            .setDesc('Keywords used to identify tasks (comma-separated)')
+            .addTextArea(text => text
+                .setPlaceholder('todo, task, need to, have to, must')
+                .setValue(this.plugin.settings.analysis.taskKeywords.join(', '))
+                .onChange(async (value) => {
+                    this.plugin.settings.analysis.taskKeywords = value
+                        .split(',')
+                        .map(keyword => keyword.trim())
+                        .filter(keyword => keyword.length > 0);
+                    await this.plugin.saveSettings();
+                }));
     }
 }

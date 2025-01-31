@@ -13,6 +13,14 @@ export interface AiVoiceMemoSettings {
         threads: number;
         language?: string;
     };
+    analysis: {
+        extractTasks: boolean;
+        extractKeyPoints: boolean;
+        includeTaskContext: boolean;
+        includeTaskPriority: boolean;
+        includeTaskDates: boolean;
+        taskKeywords: string[];
+    };
 }
 
 export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
@@ -28,5 +36,22 @@ export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
         modelPath: 'models/whisper-base.bin',
         device: 'cpu',
         threads: navigator.hardwareConcurrency || 4
+    },
+    analysis: {
+        extractTasks: true,
+        extractKeyPoints: true,
+        includeTaskContext: true,
+        includeTaskPriority: true,
+        includeTaskDates: true,
+        taskKeywords: [
+            'todo',
+            'task',
+            'action item',
+            'need to',
+            'have to',
+            'must',
+            'remember to',
+            'don\'t forget'
+        ]
     }
 };
