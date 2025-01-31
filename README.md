@@ -44,8 +44,20 @@ Configure the plugin in Settings:
 - **Whisper Model**: Choose between different Whisper models
 - **Auto-Transcribe**: Enable/disable automatic transcription
 - **Save Audio**: Choose to keep or delete original audio files
-- **Summary Length**: Configure summary detail level
+- **Audio Quality**: Set recording quality (low/medium/high)
+- **Summary Style**: Choose between concise, detailed, or bullet-point summaries
 - **Storage Location**: Set where memos are saved
+
+## Changelog
+
+### 0.1.0 (2025-01-31)
+
+- 🎉 First stable release
+- ✨ Automatic audio format detection for better browser compatibility
+- 🎨 Improved error handling and user feedback
+- 🔧 Fixed file naming issues
+- 📝 Enhanced transcription note formatting
+- 🚀 Performance improvements
 
 ### Keyboard Shortcuts
 

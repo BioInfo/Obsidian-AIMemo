@@ -231,7 +231,11 @@ export class TranscriptionService {
         }
         
         const timestamp = new Date(job.timestamp);
-        const fileName = `voice-memo-${timestamp.toISOString()}.md`;
+        const safeTimestamp = timestamp.toISOString()
+            .replace(/:/g, '-')
+            .replace(/\./g, '-')
+            .slice(0, 19);
+        const fileName = `voice-memo-${safeTimestamp}.md`;
         
         // Build note content
         const contentParts = [

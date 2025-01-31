@@ -15,6 +15,14 @@ export class VoiceRecorderManager {
     private audioChunks: Blob[] = [];
     private _isRecording: boolean = false;
     private stream: MediaStream | null = null;
+    private audioFormat: string = 'audio/webm';
+    
+    private readonly SUPPORTED_FORMATS = [
+        'audio/webm',
+        'audio/ogg',
+        'audio/wav',
+        'audio/mp4'
+    ];
 
     constructor(plugin: AiVoiceMemoPlugin, transcriptionService: TranscriptionService) {
         this.plugin = plugin;
@@ -37,19 +45,48 @@ export class VoiceRecorderManager {
             );
         }
 
+        // Check if mediaDevices API is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('MediaDevices API not supported');
+            throw new VoiceRecorderError(
+                'Your system does not support audio recording. Please ensure you are using a supported browser.',
+                VoiceRecorderErrorCode.UNSUPPORTED_BROWSER
+            );
+        }
+
         try {
-            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            const mimeType = this.getMimeType(this.plugin.settings);
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                throw new VoiceRecorderError(
-                    `Audio format ${mimeType} is not supported by your browser`,
-                    VoiceRecorderErrorCode.UNSUPPORTED_FORMAT
-                );
+            console.log('Attempting to access microphone...');
+            try {
+                // List available audio devices first
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioDevices = devices.filter(device => device.kind === 'audioinput');
+                console.log('Available audio devices:', audioDevices.map(d => ({ deviceId: d.deviceId, label: d.label })));
+                
+                // Request microphone access with specific constraints
+                // Request basic audio access first
+                this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone access granted successfully');
+            } catch (error) {
+                if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                    throw new VoiceRecorderError(
+                        'Microphone access was denied. Please enable microphone access in your system settings:\n' +
+                        '1. Open System Settings → Privacy & Security → Microphone\n' +
+                        '2. Find Obsidian in the list\n' +
+                        '3. Toggle the switch next to Obsidian to ON\n' +
+                        '4. Restart Obsidian and try again',
+                        VoiceRecorderErrorCode.PERMISSION_DENIED,
+                        error
+                    );
+                }
+                throw error;
             }
             
+            // Test and select the best supported audio format
+            this.audioFormat = await this.getBestAudioFormat();
+            console.log(`Using audio format: ${this.audioFormat}`);
+            
             const options: MediaRecorderOptions = {
-                mimeType,
+                mimeType: this.audioFormat,
                 audioBitsPerSecond: this.getAudioBitrate(this.plugin.settings.audioQuality)
             };
             
@@ -95,7 +132,7 @@ export class VoiceRecorderManager {
     private async handleRecordingComplete(): Promise<void> {
         try {
             const audioBlob = new Blob(this.audioChunks, { 
-                type: this.getMimeType(this.plugin.settings)
+                type: this.audioFormat
             });
 
             if (this.plugin.settings.saveAudioFiles) {
@@ -128,7 +165,12 @@ export class VoiceRecorderManager {
      */
     private async saveAudioFile(audioBlob: Blob): Promise<void> {
         try {
-            const fileName = `voice-memo-${new Date().toISOString()}.${this.plugin.settings.audioFormat}`;
+            const extension = this.audioFormat.split('/')[1].split(';')[0];
+            const timestamp = new Date().toISOString()
+                .replace(/:/g, '-')
+                .replace(/\./g, '-')
+                .slice(0, 19);
+            const fileName = `voice-memo-${timestamp}.${extension}`;
             const arrayBuffer = await audioBlob.arrayBuffer();
             
             await this.plugin.app.vault.adapter.writeBinary(
@@ -147,12 +189,30 @@ export class VoiceRecorderManager {
     }
 
     /**
-     * Gets the appropriate MIME type based on settings.
-     * @param settings - The plugin settings
-     * @returns The MIME type string
+     * Tests audio formats and returns the best supported one.
+     * @returns The best supported audio format
      */
-    private getMimeType(settings: AiVoiceMemoSettings): string {
-        return settings.audioFormat === 'ogg' ? 'audio/ogg' : 'audio/wav';
+    private async getBestAudioFormat(): Promise<string> {
+        // Try different mime types in order of preference
+        const mimeTypes = [
+            'audio/webm',           // Most modern browsers
+            'audio/webm;codecs=opus',// Chrome, Firefox
+            'audio/ogg',            // Firefox
+            'audio/ogg;codecs=opus', // Firefox
+            'audio/mp4',            // Safari
+            'audio/wav',            // Fallback
+        ];
+
+        // Find the first supported mime type
+        const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+        if (!supportedType) {
+            throw new VoiceRecorderError(
+                'No supported audio format found. Please try using a different browser.',
+                VoiceRecorderErrorCode.UNSUPPORTED_FORMAT
+            );
+        }
+
+        return supportedType;
     }
 
     /**

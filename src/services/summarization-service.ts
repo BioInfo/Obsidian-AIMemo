@@ -71,6 +71,10 @@ export class SummarizationService {
      * @returns Array of text chunks
      */
     private chunkText(text: string): string[] {
+        if (!text || text.length === 0) {
+            return [];
+        }
+
         const chunks: string[] = [];
         let startIndex = 0;
 
@@ -80,14 +84,22 @@ export class SummarizationService {
             // Find a good break point (end of sentence)
             let breakPoint = endIndex;
             if (endIndex < text.length) {
-                const nextPeriod = text.indexOf('.', endIndex - 50);
+                const searchStart = Math.max(startIndex, endIndex - 50);
+                const nextPeriod = text.indexOf('.', searchStart);
                 if (nextPeriod !== -1 && nextPeriod < endIndex + 50) {
                     breakPoint = nextPeriod + 1;
                 }
             }
 
-            chunks.push(text.slice(startIndex, breakPoint).trim());
-            startIndex = breakPoint - this.CHUNK_OVERLAP;
+            const chunk = text.slice(startIndex, breakPoint).trim();
+            if (chunk) {
+                chunks.push(chunk);
+            }
+            
+            startIndex = Math.min(breakPoint, text.length);
+            if (startIndex < text.length) {
+                startIndex = Math.max(startIndex - this.CHUNK_OVERLAP, 0);
+            }
         }
 
         return chunks;

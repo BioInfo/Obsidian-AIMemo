@@ -72,20 +72,6 @@ class AiVoiceMemoSettingTab extends PluginSettingTab {
         containerEl.createEl('h3', { text: 'Recording Configuration' });
 
         new Setting(containerEl)
-            .setName('Audio Format')
-            .setDesc('Choose the format for saving audio files')
-            .addDropdown(dropdown => dropdown
-                .addOptions({
-                    'ogg': 'OGG (Better Compression)',
-                    'wav': 'WAV (Better Quality)'
-                })
-                .setValue(this.plugin.settings.audioFormat)
-                .onChange(async (value) => {
-                    this.plugin.settings.audioFormat = value as 'ogg' | 'wav';
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
             .setName('Audio Quality')
             .setDesc('Set the quality level for audio recording')
             .addDropdown(dropdown => dropdown
