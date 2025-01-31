@@ -21,6 +21,18 @@ export interface AiVoiceMemoSettings {
         includeTaskDates: boolean;
         taskKeywords: string[];
     };
+    summarization: {
+        enabled: boolean;
+        style: 'concise' | 'detailed' | 'bullet-points';
+        maxLength: number;
+        includeSections: {
+            topics: boolean;
+            decisions: boolean;
+            questions: boolean;
+        };
+        chunkSize: number;
+        chunkOverlap: number;
+    };
 }
 
 export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
@@ -53,5 +65,17 @@ export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
             'remember to',
             'don\'t forget'
         ]
+    },
+    summarization: {
+        enabled: true,
+        style: 'detailed',
+        maxLength: 500,
+        includeSections: {
+            topics: true,
+            decisions: true,
+            questions: true
+        },
+        chunkSize: 1000,
+        chunkOverlap: 200
     }
 };

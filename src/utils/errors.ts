@@ -50,3 +50,21 @@ export enum TranscriptionErrorCode {
     LOCAL_MODEL_ERROR = 'LOCAL_MODEL_ERROR',
     UNKNOWN = 'UNKNOWN'
 }
+
+export class SummarizationError extends PluginError {
+    constructor(
+        message: string,
+        public readonly code: SummarizationErrorCode,
+        originalError?: unknown
+    ) {
+        super(message, code, originalError);
+    }
+}
+
+export enum SummarizationErrorCode {
+    TEXT_TOO_LONG = 'TEXT_TOO_LONG',
+    PROCESSING_FAILED = 'PROCESSING_FAILED',
+    INVALID_OPTIONS = 'INVALID_OPTIONS',
+    MODEL_ERROR = 'MODEL_ERROR',
+    UNKNOWN = 'UNKNOWN'
+}

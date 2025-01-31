@@ -1,10 +1,11 @@
 import { Notice } from 'obsidian';
 import type AiVoiceMemoPlugin from '../main';
 import type { AiVoiceMemoSettings } from '../types/settings';
-import { TranscriptionError, TranscriptionErrorCode } from '../utils/errors';
+import { TranscriptionError, TranscriptionErrorCode, SummarizationError, SummarizationErrorCode } from '../utils/errors';
 import { WhisperAPIClient } from './whisper-api-client';
 import { WhisperLocalService } from './whisper-local-service';
 import { TextAnalysisService } from './text-analysis-service';
+import { SummarizationService } from './summarization-service';
 
 /**
  * Represents a transcription job in the queue
@@ -29,12 +30,14 @@ export class TranscriptionService {
     private apiClient: WhisperAPIClient;
     private localService: WhisperLocalService;
     private analysisService: TextAnalysisService;
+    private summarizationService: SummarizationService;
 
     constructor(plugin: AiVoiceMemoPlugin) {
         this.plugin = plugin;
         this.apiClient = new WhisperAPIClient(this.plugin.settings.openaiApiKey);
         this.localService = new WhisperLocalService(this.plugin);
         this.analysisService = new TextAnalysisService(this.plugin);
+        this.summarizationService = new SummarizationService(this.plugin);
     }
 
     /**
@@ -202,6 +205,31 @@ export class TranscriptionService {
         // Analyze transcription for tasks and key points
         const analysis = this.analysisService.analyze(job.result);
         
+        // Generate summary if enabled
+        let summary;
+        if (this.plugin.settings.summarization.enabled) {
+            try {
+                summary = await this.summarizationService.summarize(job.result, {
+                    maxLength: this.plugin.settings.summarization.maxLength,
+                    style: this.plugin.settings.summarization.style,
+                    focusAreas: Object.entries(this.plugin.settings.summarization.includeSections)
+                        .filter(([_, enabled]) => enabled)
+                        .map(([area]) => area as 'topics' | 'decisions' | 'questions')
+                });
+            } catch (error) {
+                console.error('Summary generation failed:', error);
+                const summaryError = error instanceof SummarizationError 
+                    ? error 
+                    : new SummarizationError(
+                        'Failed to generate summary',
+                        SummarizationErrorCode.UNKNOWN,
+                        error
+                    );
+                new Notice(`Summary generation failed: ${summaryError.message}`);
+                // Continue without summary
+            }
+        }
+        
         const timestamp = new Date(job.timestamp);
         const fileName = `voice-memo-${timestamp.toISOString()}.md`;
         
@@ -213,10 +241,25 @@ export class TranscriptionService {
             '---',
             '',
             '# Voice Memo Transcription',
-            '',
-            job.result,
             ''
         ];
+
+        // Add summary if available
+        if (summary) {
+            contentParts.push(
+                this.summarizationService.formatSummary(summary),
+                '',
+                '## Full Transcription',
+                '',
+                job.result,
+                ''
+            );
+        } else {
+            contentParts.push(
+                job.result,
+                ''
+            );
+        }
 
         // Add extracted tasks if enabled
         if (this.plugin.settings.analysis.extractTasks && analysis.tasks.length > 0) {
@@ -269,6 +312,6 @@ export class TranscriptionService {
         this.queue = [];
         this.isProcessing = false;
         this.localService.cleanup();
-        // No cleanup needed for analysisService as it's stateless
+        // No cleanup needed for analysisService and summarizationService as they're stateless
     }
 }

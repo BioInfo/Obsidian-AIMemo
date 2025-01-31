@@ -71,8 +71,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved note creation with structured sections
 - Enhanced error handling for analysis features
 
+## [0.1.0-alpha.5] - 2025-01-31
+
+### Added
+- Smart summaries of voice memos with configurable styles
+- Topic, decision, and question extraction
+- Chunk-based processing for long transcriptions
+- Advanced summarization settings
+- Conditional UI for summary configuration
+
+### Changed
+- Enhanced note creation with structured summaries
+- Improved error handling for summarization
+- Updated settings UI with summarization section
+
 ## [Unreleased]
 ### Planned
-- Smart summaries of voice memos
 - Mobile-specific UI improvements
 - Cross-platform testing and optimization

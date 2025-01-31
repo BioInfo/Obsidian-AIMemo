@@ -371,5 +371,103 @@ export class AiVoiceMemoSettingTab extends PluginSettingTab {
                         .filter(keyword => keyword.length > 0);
                     await this.plugin.saveSettings();
                 }));
+
+        // Summarization Configuration Section
+        containerEl.createEl('h3', { text: 'Summarization Configuration' });
+
+        new Setting(containerEl)
+            .setName('Enable Summaries')
+            .setDesc('Automatically generate summaries for voice memos')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.summarization.enabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.summarization.enabled = value;
+                    await this.plugin.saveSettings();
+                    // Refresh display to show/hide related settings
+                    this.display();
+                }));
+
+        if (this.plugin.settings.summarization.enabled) {
+            new Setting(containerEl)
+                .setName('Summary Style')
+                .setDesc('Choose how summaries should be formatted')
+                .addDropdown(dropdown => dropdown
+                    .addOptions({
+                        'concise': 'Concise (Brief overview)',
+                        'detailed': 'Detailed (Comprehensive)',
+                        'bullet-points': 'Bullet Points (Key items)'
+                    })
+                    .setValue(this.plugin.settings.summarization.style)
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.style = value as 'concise' | 'detailed' | 'bullet-points';
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Maximum Length')
+                .setDesc('Maximum length of generated summaries (in characters)')
+                .addSlider(slider => slider
+                    .setLimits(100, 1000, 100)
+                    .setValue(this.plugin.settings.summarization.maxLength)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.maxLength = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Include Topics')
+                .setDesc('Extract and list main topics discussed')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.summarization.includeSections.topics)
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.includeSections.topics = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Include Decisions')
+                .setDesc('Extract and list decisions made')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.summarization.includeSections.decisions)
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.includeSections.decisions = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Include Questions')
+                .setDesc('Extract and list questions raised')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.summarization.includeSections.questions)
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.includeSections.questions = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Advanced: Chunk Size')
+                .setDesc('Size of text chunks for processing (in characters)')
+                .addSlider(slider => slider
+                    .setLimits(500, 2000, 100)
+                    .setValue(this.plugin.settings.summarization.chunkSize)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.chunkSize = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Advanced: Chunk Overlap')
+                .setDesc('Overlap between text chunks for better context')
+                .addSlider(slider => slider
+                    .setLimits(50, 500, 50)
+                    .setValue(this.plugin.settings.summarization.chunkOverlap)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.summarization.chunkOverlap = value;
+                        await this.plugin.saveSettings();
+                    }));
+        }
     }
 }
