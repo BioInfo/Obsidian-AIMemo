@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Memory usage monitoring and profiling
+- Performance statistics tracking
+- Worker thread status reporting
+- Progress tracking with memory metrics
+
+### Changed
+- Refactored worker implementation into separate modules:
+  - Created base worker class for common functionality
+  - Split out model handling into dedicated class
+  - Added utilities for monitoring and performance tracking
+- Improved error handling with specific error types
+- Enhanced memory management with configurable limits
+- Better TypeScript type safety throughout
+
+### Fixed
+- Memory leaks in worker cleanup
+- Inconsistent error handling
+- Missing null checks
+- Type safety issues
+
 All notable changes to the Obsidian AI Voice Memo Plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -86,6 +109,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated settings UI with summarization section
 
 ## [Unreleased]
-### Planned
-- Mobile-specific UI improvements
+### In Progress
 - Cross-platform testing and optimization
+  - Performance profiling and benchmarking
+  - Memory usage optimization
+  - Worker thread efficiency improvements
+  - Platform-specific testing infrastructure
+
+### Future Plans
+- Mobile-specific UI improvements
+  - Touch-optimized interface
+  - Gesture controls
+  - Battery optimization
+  - Mobile-specific settings

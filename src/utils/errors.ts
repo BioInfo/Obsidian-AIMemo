@@ -43,6 +43,7 @@ export enum VoiceRecorderErrorCode {
 
 export enum TranscriptionErrorCode {
     INVALID_AUDIO = 'INVALID_AUDIO',
+    INVALID_OPTIONS = 'INVALID_OPTIONS',
     API_ERROR = 'API_ERROR',
     MODEL_NOT_FOUND = 'MODEL_NOT_FOUND',
     QUEUE_FULL = 'QUEUE_FULL',

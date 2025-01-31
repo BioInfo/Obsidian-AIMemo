@@ -6,9 +6,8 @@
 - **AiVoiceMemoPlugin** (`src/main.ts`)
   - Main plugin entry point
   - Manages plugin lifecycle
-  - Handles UI initialization
-  - Coordinates between components
-  - Implements settings management
+  - Coordinates between managers
+  - Handles error recovery
 
 - **VoiceRecorderManager** (`src/managers/voice-recorder-manager.ts`)
   - Handles audio recording initialization
@@ -17,18 +16,42 @@
   - Implements compression and storage logic
   - Supports configurable audio quality
 
-- **AiVoiceMemoSettingTab** (`src/main.ts`)
-  - Renders settings interface
-  - Handles settings validation
-  - Provides real-time settings updates
-  - Manages user preferences
+- **SettingsManager** (`src/managers/settings-manager.ts`)
+  - Manages plugin settings
+  - Handles settings persistence
+  - Provides settings UI
+  - Validates configuration
 
-### 2. Planned Components
-- **TranscriptionService**
-  - Will manage Whisper integration
-  - Will handle both local and API-based transcription
-  - Will implement transcription queue management
-  - Will provide progress updates
+- **UiManager** (`src/managers/ui-manager.ts`)
+  - Manages UI elements
+  - Handles ribbon icons
+  - Controls status bar
+  - Provides visual feedback
+
+- **CommandManager** (`src/managers/command-manager.ts`)
+  - Registers plugin commands
+  - Handles keyboard shortcuts
+  - Manages command execution
+  - Coordinates with UI
+
+### 2. Worker Components
+- **WhisperWorker** (`src/workers/whisper-worker.ts`)
+  - Handles transcription processing
+  - Manages memory usage
+  - Provides progress updates
+  - Implements error handling
+
+- **WhisperModelHandler** (`src/workers/whisper-model-handler.ts`)
+  - Manages Whisper model lifecycle
+  - Handles model initialization
+  - Controls resource cleanup
+  - Provides model status
+
+- **WhisperWorkerMonitor** (`src/workers/whisper-worker-utils.ts`)
+  - Tracks performance metrics
+  - Monitors memory usage
+  - Provides progress reporting
+  - Manages resource limits
 
 - **NoteManager**
   - Will create and update markdown notes
@@ -36,18 +59,24 @@
   - Will handle file naming and organization
   - Will implement backlink creation
 
-### 2. User Interface Components
-- **RecordingPanel**
-  - Displays recording controls
-  - Shows status indicators
-  - Provides visual feedback
-  - Handles user interactions
+### 3. Service Components
+- **TranscriptionService** (`src/services/transcription-service.ts`)
+  - Manages transcription workflow
+  - Coordinates with workers
+  - Handles API integration
+  - Provides progress updates
 
-- **SettingsPanel**
-  - Renders configuration options
-  - Validates user input
-  - Provides feedback on changes
-  - Manages preference persistence
+- **WhisperLocalService** (`src/services/whisper-local-service.ts`)
+  - Manages local model operations
+  - Handles worker communication
+  - Controls resource usage
+  - Provides status updates
+
+- **WhisperApiClient** (`src/services/whisper-api-client.ts`)
+  - Handles API communication
+  - Manages API keys
+  - Provides error handling
+  - Controls rate limiting
 
 ## Data Flow
 
@@ -93,10 +122,11 @@ TranscriptionService → NoteManager → File System
 ## Recent Significant Changes
 
 ### Code Organization (2025-01-31)
-- Consolidated main plugin code into `src/main.ts`
-- Implemented proper TypeScript strict mode configuration
-- Added comprehensive settings UI with audio quality controls
-- Created modular VoiceRecorderManager with improved state management
+- Refactored into manager-based architecture
+- Implemented worker-based transcription system
+- Added performance monitoring and memory management
+- Enhanced error handling and type safety
+- Created modular component structure
 
 ### Documentation Updates
 - Added detailed project structure documentation

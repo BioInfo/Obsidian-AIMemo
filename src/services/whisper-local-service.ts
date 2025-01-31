@@ -7,7 +7,32 @@ interface WhisperModelConfig {
     language?: string;
     device: 'cpu' | 'gpu';
     threads: number;
+    maxMemoryMB?: number;
 }
+
+interface TranscriptionProgress {
+    percent: number;
+    stage: string;
+    memoryUsage?: {
+        heapUsed: number;
+        heapTotal: number;
+    };
+}
+
+interface WorkerStatus {
+    initialized: boolean;
+    memoryUsage: {
+        heapUsed: number;
+        heapTotal: number;
+    };
+    modelInfo?: {
+        size: number;
+        device: string;
+        threads: number;
+    };
+}
+
+type ProgressCallback = (progress: TranscriptionProgress) => void;
 
 /**
  * Manages local Whisper model for offline transcription.
@@ -93,7 +118,7 @@ export class WhisperLocalService {
      * @returns The transcribed text
      * @throws {TranscriptionError} If transcription fails
      */
-    async transcribe(audioBlob: Blob): Promise<string> {
+    async transcribe(audioBlob: Blob, onProgress?: ProgressCallback): Promise<string> {
         if (!this.isInitialized || !this.worker) {
             await this.initialize();
         }
@@ -115,12 +140,27 @@ export class WhisperLocalService {
                 }
 
                 const handleTranscribeMessage = (event: MessageEvent) => {
-                    if (event.data.type === 'transcribed') {
-                        this.worker?.removeEventListener('message', handleTranscribeMessage);
-                        resolve(event.data.text || '');
-                    } else if (event.data.type === 'error') {
-                        this.worker?.removeEventListener('message', handleTranscribeMessage);
-                        reject(new Error(event.data.error?.message));
+                    switch (event.data.type) {
+                        case 'transcribed':
+                            this.worker?.removeEventListener('message', handleTranscribeMessage);
+                            resolve(event.data.text || '');
+                            break;
+                            
+                        case 'error':
+                            this.worker?.removeEventListener('message', handleTranscribeMessage);
+                            const error = new TranscriptionError(
+                                event.data.error?.message || 'Unknown error',
+                                event.data.error?.code || TranscriptionErrorCode.UNKNOWN,
+                                event.data.error?.details
+                            );
+                            reject(error);
+                            break;
+                            
+                        case 'progress':
+                            if (onProgress && event.data.progress) {
+                                onProgress(event.data.progress);
+                            }
+                            break;
                     }
                 };
 
@@ -151,17 +191,69 @@ export class WhisperLocalService {
             this.modelConfig = {
                 modelPath: 'models/whisper-base.bin',
                 device: 'cpu',
-                threads: navigator.hardwareConcurrency || 4
+                threads: navigator.hardwareConcurrency || 4,
+                maxMemoryMB: 1024 // Default to 1GB limit
             };
+        }
+
+        // Validate configuration
+        if (config.threads && config.threads < 1) {
+            throw new TranscriptionError(
+                'Thread count must be at least 1',
+                TranscriptionErrorCode.INVALID_OPTIONS
+            );
+        }
+
+        if (config.maxMemoryMB && config.maxMemoryMB < 256) {
+            throw new TranscriptionError(
+                'Memory limit must be at least 256MB',
+                TranscriptionErrorCode.INVALID_OPTIONS
+            );
         }
 
         Object.assign(this.modelConfig, config);
 
         // Reinitialize if already initialized
         if (this.isInitialized) {
-            this.cleanup();
+            await this.cleanup();
             await this.initialize();
         }
+    }
+
+    /**
+     * Gets the current status of the worker including memory usage and model info.
+     */
+    async getStatus(): Promise<WorkerStatus> {
+        if (!this.worker) {
+            return {
+                initialized: false,
+                memoryUsage: { heapUsed: 0, heapTotal: 0 }
+            };
+        }
+
+        return new Promise<WorkerStatus>((resolve) => {
+            const worker = this.worker;
+            if (!worker) {
+                resolve({
+                    initialized: false,
+                    memoryUsage: { heapUsed: 0, heapTotal: 0 }
+                });
+                return;
+            }
+
+            const handleStatusMessage = (event: MessageEvent) => {
+                if (event.data.type === 'status') {
+                    worker.removeEventListener('message', handleStatusMessage);
+                    resolve(event.data.status || {
+                        initialized: false,
+                        memoryUsage: { heapUsed: 0, heapTotal: 0 }
+                    });
+                }
+            };
+
+            worker.addEventListener('message', handleStatusMessage);
+            worker.postMessage({ type: 'status' });
+        });
     }
 
     /**
@@ -171,9 +263,28 @@ export class WhisperLocalService {
      * Handles messages from the worker thread
      */
     private handleWorkerMessage(event: MessageEvent): void {
-        // Handle any general messages not caught by specific promise handlers
-        if (event.data.type === 'error') {
-            console.error('Worker error:', event.data.error?.message);
+        const { type, error, progress } = event.data;
+        
+        switch (type) {
+            case 'error':
+                if (error?.message) {
+                    console.error('Worker error:', error.message);
+                    this.plugin.setStatusBarText(`Error: ${error.message}`, 5000);
+                }
+                break;
+                
+            case 'progress':
+                if (progress?.stage === 'processing' && typeof progress.percent === 'number') {
+                    this.plugin.setStatusBarText(
+                        `Transcribing: ${progress.percent}%`,
+                        0
+                    );
+                }
+                break;
+                
+            case 'status':
+                // Log status updates if needed
+                break;
         }
     }
 
@@ -185,14 +296,66 @@ export class WhisperLocalService {
         this.cleanup();
     }
 
-    cleanup(): void {
-        if (this.worker) {
-            this.worker.postMessage({ type: 'cleanup' });
-            this.worker.terminate();
-            this.worker = null;
+    async cleanup(): Promise<void> {
+        if (!this.worker) {
+            return;
         }
-        this.isInitialized = false;
-        this.workerReady = null;
+
+        try {
+            // Wait for cleanup to complete
+            await new Promise<void>((resolve, reject) => {
+                const cleanup = () => {
+                    if (this.worker) {
+                        this.worker.terminate();
+                        this.worker = null;
+                    }
+                    this.isInitialized = false;
+                    this.workerReady = null;
+                    resolve();
+                };
+
+                const currentWorker = this.worker;
+                if (!currentWorker) {
+                    cleanup();
+                    return;
+                }
+
+                const handleCleanupMessage = (event: MessageEvent) => {
+                    if (event.data.type === 'status' && event.data.status && !event.data.status.initialized) {
+                        currentWorker.removeEventListener('message', handleCleanupMessage);
+                        currentWorker.removeEventListener('error', handleCleanupError);
+                        cleanup();
+                    }
+                };
+
+                const handleCleanupError = (error: ErrorEvent) => {
+                    currentWorker.removeEventListener('message', handleCleanupMessage);
+                    currentWorker.removeEventListener('error', handleCleanupError);
+                    console.error('Cleanup error:', error);
+                    cleanup();
+                    reject(error);
+                };
+
+                currentWorker.addEventListener('message', handleCleanupMessage);
+                currentWorker.addEventListener('error', handleCleanupError);
+                currentWorker.postMessage({ type: 'cleanup' });
+
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    cleanup();
+                    reject(new Error('Cleanup timeout'));
+                }, 5000);
+            });
+        } catch (error) {
+            console.error('Failed to cleanup worker:', error);
+            // Ensure cleanup even if promise fails
+            if (this.worker) {
+                this.worker.terminate();
+                this.worker = null;
+            }
+            this.isInitialized = false;
+            this.workerReady = null;
+        }
     }
 
     /**

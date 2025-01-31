@@ -1,150 +1,163 @@
 import { TranscriptionError, TranscriptionErrorCode } from '../utils/errors';
-
-interface WhisperWorkerConfig {
-    modelPath: string;
-    language?: string;
-    device: 'cpu' | 'gpu';
-    threads: number;
-}
-
-interface WhisperWorkerMessage {
-    type: 'initialize' | 'transcribe' | 'cleanup';
-    config?: WhisperWorkerConfig;
-    audioData?: ArrayBuffer;
-}
-
-interface WhisperWorkerResponse {
-    type: 'initialized' | 'transcribed' | 'error';
-    text?: string;
-    error?: {
-        message: string;
-        code: string;
-    };
-}
+import { BaseWorker } from './base-worker';
+import { WhisperWorkerMonitor } from './whisper-worker-utils';
+import { WhisperModelHandler } from './whisper-model-handler';
+import {
+    WhisperModelConfig,
+    WhisperWorkerMessage,
+    WhisperWorkerResponse
+} from '../types/whisper';
 
 /**
  * Web Worker for handling Whisper model operations.
  * Runs in a separate thread to prevent blocking the main UI.
+ * Implements memory management, performance tracking, and detailed error handling.
  */
-class WhisperWorker {
-    private model: any = null; // Will be the actual Whisper model instance
-    private config: WhisperWorkerConfig | null = null;
+class WhisperWorker extends BaseWorker {
+    private model: WhisperModelHandler;
+    private monitor: WhisperWorkerMonitor;
 
     constructor() {
-        self.onmessage = this.handleMessage.bind(this);
+        super();
+        this.model = new WhisperModelHandler();
+        this.monitor = new WhisperWorkerMonitor();
     }
 
-    /**
-     * Handles incoming messages from the main thread.
-     */
-    private async handleMessage(event: MessageEvent<WhisperWorkerMessage>): Promise<void> {
-        const { type } = event.data;
+    protected async handleMessage(event: MessageEvent<WhisperWorkerMessage>): Promise<void> {
+        const { type, requestId } = event.data;
 
         try {
             switch (type) {
                 case 'initialize':
-                    if (!event.data.config) {
-                        throw new Error('Configuration required for initialization');
-                    }
-                    await this.initialize(event.data.config);
+                    await this.handleInitialize(event.data.config);
                     break;
 
                 case 'transcribe':
                     if (!event.data.audioData) {
-                        throw new Error('Audio data required for transcription');
+                        throw new TranscriptionError(
+                            'Audio data required for transcription',
+                            TranscriptionErrorCode.INVALID_AUDIO
+                        );
                     }
-                    const text = await this.transcribe(event.data.audioData);
-                    this.postResponse({ type: 'transcribed', text });
+                    const text = await this.handleTranscribe(event.data.audioData);
+                    this.postMessage({ type: 'transcribed', text, requestId });
                     break;
 
                 case 'cleanup':
-                    await this.cleanup();
+                    await this.handleCleanup();
+                    break;
+
+                case 'status':
+                    await this.handleStatus(requestId);
                     break;
 
                 default:
-                    throw new Error(`Unknown message type: ${type}`);
+                    throw new TranscriptionError(
+                        `Unknown message type: ${type}`,
+                        TranscriptionErrorCode.UNKNOWN
+                    );
             }
         } catch (error) {
-            this.handleError(error);
+            this.handleError(error, requestId);
         }
     }
 
-    /**
-     * Initializes the Whisper model with the provided configuration.
-     */
-    private async initialize(config: WhisperWorkerConfig): Promise<void> {
-        try {
-            this.config = config;
-
-            // TODO: Implement model initialization
-            // 1. Load ONNX runtime
-            // 2. Load model from path
-            // 3. Initialize processing pipeline
-            throw new Error('Model initialization not yet implemented');
-
-            this.postResponse({ type: 'initialized' });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
-            throw new Error(`Failed to initialize model: ${errorMessage}`);
-        }
-    }
-
-    /**
-     * Transcribes the provided audio data.
-     */
-    private async transcribe(audioData: ArrayBuffer): Promise<string> {
-        if (!this.model) {
-            throw new Error('Model not initialized');
+    protected async handleInitialize(config?: WhisperModelConfig): Promise<void> {
+        if (!config) {
+            throw new TranscriptionError(
+                'Configuration required for initialization',
+                TranscriptionErrorCode.INVALID_OPTIONS
+            );
         }
 
-        try {
-            // TODO: Implement transcription
-            // 1. Convert audio data to required format
-            // 2. Run inference
-            // 3. Post-process results
-            throw new Error('Transcription not yet implemented');
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown transcription error';
-            throw new Error(`Transcription failed: ${errorMessage}`);
-        }
-    }
-
-    /**
-     * Cleans up resources used by the model.
-     */
-    private async cleanup(): Promise<void> {
-        try {
-            if (this.model) {
-                // TODO: Implement model cleanup
-                this.model = null;
-            }
-            this.config = null;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown cleanup error';
-            throw new Error(`Cleanup failed: ${errorMessage}`);
-        }
-    }
-
-    /**
-     * Posts a response message back to the main thread.
-     */
-    private postResponse(response: WhisperWorkerResponse): void {
-        self.postMessage(response);
-    }
-
-    /**
-     * Handles and formats errors before sending them to the main thread.
-     */
-    private handleError(error: unknown): void {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        const errorResponse: WhisperWorkerResponse = {
-            type: 'error',
-            error: {
-                message: errorMessage,
-                code: TranscriptionErrorCode.LOCAL_MODEL_ERROR
+        const progress = (percent: number) => {
+            const update = this.monitor.createProgressUpdate(percent, 'loading');
+            if (update) {
+                this.postMessage(update);
             }
         };
-        this.postResponse(errorResponse);
+
+        progress(0);
+
+        if (config.maxMemoryMB && !this.monitor.checkMemoryLimit(config.maxMemoryMB)) {
+            throw new TranscriptionError(
+                'Insufficient memory for model initialization',
+                TranscriptionErrorCode.LOCAL_MODEL_ERROR
+            );
+        }
+
+        progress(25);
+        await this.model.initialize(config);
+        progress(100);
+
+        this.postMessage({ type: 'initialized' });
+    }
+
+    protected async handleTranscribe(audioData: ArrayBuffer): Promise<string> {
+        this.monitor.startProcessing();
+
+        const progress = (percent: number) => {
+            const update = this.monitor.createProgressUpdate(percent, 'processing');
+            if (update) {
+                this.postMessage(update);
+            }
+        };
+
+        try {
+            progress(0);
+            const text = await this.model.transcribe(audioData);
+            progress(100);
+            return text;
+        } finally {
+            this.monitor.endProcessing(audioData.byteLength);
+            if (typeof global.gc === 'function') {
+                global.gc();
+            }
+        }
+    }
+
+    protected async handleCleanup(): Promise<void> {
+        await this.withTimeout(
+            this.model.cleanup(),
+            5000,
+            'Model cleanup timeout'
+        );
+        this.monitor.reset();
+    }
+
+    private async handleStatus(requestId?: string): Promise<void> {
+        const memoryInfo = this.monitor.getMemoryInfo();
+        const config = this.model.getConfig();
+        const stats = this.monitor.getStats();
+
+        this.postMessage({
+            type: 'status',
+            requestId,
+            status: {
+                initialized: this.model.isInitialized(),
+                memoryUsage: memoryInfo,
+                modelInfo: this.model.isInitialized() ? {
+                    size: stats.peakMemoryUsage,
+                    device: config?.device || 'unknown',
+                    threads: config?.threads || 1
+                } : undefined
+            }
+        });
+    }
+
+    protected handleError(error: unknown, requestId?: string): void {
+        const errorResponse: WhisperWorkerResponse = {
+            type: 'error',
+            requestId,
+            error: {
+                message: error instanceof Error ? error.message : 'Unknown error occurred',
+                code: error instanceof TranscriptionError 
+                    ? error.code 
+                    : TranscriptionErrorCode.UNKNOWN,
+                details: error instanceof TranscriptionError ? error.originalError : error
+            }
+        };
+        this.postMessage(errorResponse);
     }
 }
 
