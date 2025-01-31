@@ -7,6 +7,12 @@ export interface AiVoiceMemoSettings {
     audioQuality: 'low' | 'medium' | 'high';
     openaiApiKey: string;
     validateApiKey: boolean;
+    localModel: {
+        modelPath: string;
+        device: 'cpu' | 'gpu';
+        threads: number;
+        language?: string;
+    };
 }
 
 export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
@@ -17,5 +23,10 @@ export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
     memoStoragePath: 'voice-memos',
     audioQuality: 'medium',
     openaiApiKey: '',
-    validateApiKey: true
+    validateApiKey: true,
+    localModel: {
+        modelPath: 'models/whisper-base.bin',
+        device: 'cpu',
+        threads: navigator.hardwareConcurrency || 4
+    }
 };

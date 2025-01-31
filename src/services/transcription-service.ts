@@ -3,6 +3,7 @@ import type AiVoiceMemoPlugin from '../main';
 import type { AiVoiceMemoSettings } from '../types/settings';
 import { TranscriptionError, TranscriptionErrorCode } from '../utils/errors';
 import { WhisperAPIClient } from './whisper-api-client';
+import { WhisperLocalService } from './whisper-local-service';
 
 /**
  * Represents a transcription job in the queue
@@ -25,10 +26,12 @@ export class TranscriptionService {
     private queue: TranscriptionJob[] = [];
     private isProcessing: boolean = false;
     private apiClient: WhisperAPIClient;
+    private localService: WhisperLocalService;
 
     constructor(plugin: AiVoiceMemoPlugin) {
         this.plugin = plugin;
         this.apiClient = new WhisperAPIClient(this.plugin.settings.openaiApiKey);
+        this.localService = new WhisperLocalService(this.plugin);
     }
 
     /**
@@ -127,11 +130,18 @@ export class TranscriptionService {
      * @returns The transcribed text
      */
     private async processLocalTranscription(audioBlob: Blob): Promise<string> {
-        // TODO: Implement local Whisper model integration
-        throw new TranscriptionError(
-            'Local transcription not yet implemented',
-            TranscriptionErrorCode.LOCAL_MODEL_ERROR
-        );
+        try {
+            return await this.localService.transcribe(audioBlob);
+        } catch (error) {
+            if (error instanceof TranscriptionError) {
+                throw error;
+            }
+            throw new TranscriptionError(
+                'Local transcription failed',
+                TranscriptionErrorCode.LOCAL_MODEL_ERROR,
+                error
+            );
+        }
     }
 
     /**
@@ -139,22 +149,6 @@ export class TranscriptionService {
      * @param audioBlob - The audio data to transcribe
      * @returns The transcribed text
      */
-    /**
-     * Updates the API client with new settings
-     * @param settings - The new plugin settings
-     */
-    updateSettings(settings: AiVoiceMemoSettings): void {
-        this.apiClient.updateApiKey(settings.openaiApiKey);
-    }
-
-    /**
-     * Validates the current API key configuration
-     * @throws {TranscriptionError} If the API key is invalid
-     */
-    async validateApiKey(): Promise<void> {
-        await this.apiClient.validateApiKey();
-    }
-
     private async processApiTranscription(audioBlob: Blob): Promise<string> {
         if (!this.plugin.settings.openaiApiKey) {
             throw new TranscriptionError(
@@ -164,6 +158,30 @@ export class TranscriptionService {
         }
 
         return this.apiClient.transcribe(audioBlob);
+    }
+
+    /**
+     * Updates services with new settings
+     * @param settings - The new plugin settings
+     */
+    updateSettings(settings: AiVoiceMemoSettings): void {
+        this.apiClient.updateApiKey(settings.openaiApiKey);
+        
+        // Update local service config if needed
+        if (settings.transcriptionModel === 'local') {
+            this.localService.updateConfig({
+                threads: navigator.hardwareConcurrency || 4,
+                device: 'cpu' // TODO: Add GPU support configuration
+            });
+        }
+    }
+
+    /**
+     * Validates the current API key configuration
+     * @throws {TranscriptionError} If the API key is invalid
+     */
+    async validateApiKey(): Promise<void> {
+        await this.apiClient.validateApiKey();
     }
 
     /**
@@ -221,5 +239,6 @@ export class TranscriptionService {
     cleanup(): void {
         this.queue = [];
         this.isProcessing = false;
+        this.localService.cleanup();
     }
 }

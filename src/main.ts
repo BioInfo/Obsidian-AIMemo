@@ -190,7 +190,7 @@ export class AiVoiceMemoSettingTab extends PluginSettingTab {
         // Transcription Configuration Section
         containerEl.createEl('h3', { text: 'Transcription Configuration' });
 
-        new Setting(containerEl)
+        const modelSetting = new Setting(containerEl)
             .setName('Transcription Model')
             .setDesc('Select the Whisper model to use for transcription')
             .addDropdown(dropdown => dropdown
@@ -202,7 +202,62 @@ export class AiVoiceMemoSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.transcriptionModel = value as 'whisper-1' | 'local';
                     await this.plugin.saveSettings();
+                    // Refresh display to show/hide relevant settings
+                    this.display();
                 }));
+
+        // Show local model settings only when local model is selected
+        if (this.plugin.settings.transcriptionModel === 'local') {
+            containerEl.createEl('h3', { text: 'Local Model Configuration' });
+
+            new Setting(containerEl)
+                .setName('Model Path')
+                .setDesc('Path to the Whisper model file')
+                .addText(text => text
+                    .setPlaceholder('models/whisper-base.bin')
+                    .setValue(this.plugin.settings.localModel.modelPath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.localModel.modelPath = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Processing Device')
+                .setDesc('Select the device to use for transcription')
+                .addDropdown(dropdown => dropdown
+                    .addOptions({
+                        'cpu': 'CPU',
+                        'gpu': 'GPU (if available)'
+                    })
+                    .setValue(this.plugin.settings.localModel.device)
+                    .onChange(async (value) => {
+                        this.plugin.settings.localModel.device = value as 'cpu' | 'gpu';
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Thread Count')
+                .setDesc('Number of threads to use for processing (default: auto)')
+                .addSlider(slider => slider
+                    .setLimits(1, Math.max(navigator.hardwareConcurrency || 4, 1), 1)
+                    .setValue(this.plugin.settings.localModel.threads)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.localModel.threads = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Language')
+                .setDesc('Optional: Specify language for better accuracy (leave empty for auto-detect)')
+                .addText(text => text
+                    .setPlaceholder('en, fr, de, etc.')
+                    .setValue(this.plugin.settings.localModel.language || '')
+                    .onChange(async (value) => {
+                        this.plugin.settings.localModel.language = value || undefined;
+                        await this.plugin.saveSettings();
+                    }));
+        }
 
         new Setting(containerEl)
             .setName('Auto-Transcribe')
