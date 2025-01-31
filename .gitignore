@@ -1,7 +1,6 @@
 # Build output
 build/
 dist/
-main.js
 *.js.map
 data.json
 
