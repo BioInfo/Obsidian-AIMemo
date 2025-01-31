@@ -32,8 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Development setup instructions
 
 ## [Unreleased]
+### Added
+- OpenAI Whisper API integration with queue management
+- API key configuration in settings
+- API key validation functionality
+- Secure API key storage
+
+### Changed
+- Enhanced settings UI with organized sections
+- Improved error handling for API interactions
+
 ### Planned
-- OpenAI Whisper API integration
 - Local Whisper model support
 - Task extraction from transcriptions
 - Smart summaries of voice memos

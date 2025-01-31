@@ -2,6 +2,7 @@ import { Notice } from 'obsidian';
 import type AiVoiceMemoPlugin from '../main';
 import type { AiVoiceMemoSettings } from '../types/settings';
 import { TranscriptionError, TranscriptionErrorCode } from '../utils/errors';
+import { WhisperAPIClient } from './whisper-api-client';
 
 /**
  * Represents a transcription job in the queue
@@ -23,9 +24,11 @@ export class TranscriptionService {
     private plugin: AiVoiceMemoPlugin;
     private queue: TranscriptionJob[] = [];
     private isProcessing: boolean = false;
+    private apiClient: WhisperAPIClient;
 
     constructor(plugin: AiVoiceMemoPlugin) {
         this.plugin = plugin;
+        this.apiClient = new WhisperAPIClient(this.plugin.settings.openaiApiKey);
     }
 
     /**
@@ -136,12 +139,31 @@ export class TranscriptionService {
      * @param audioBlob - The audio data to transcribe
      * @returns The transcribed text
      */
+    /**
+     * Updates the API client with new settings
+     * @param settings - The new plugin settings
+     */
+    updateSettings(settings: AiVoiceMemoSettings): void {
+        this.apiClient.updateApiKey(settings.openaiApiKey);
+    }
+
+    /**
+     * Validates the current API key configuration
+     * @throws {TranscriptionError} If the API key is invalid
+     */
+    async validateApiKey(): Promise<void> {
+        await this.apiClient.validateApiKey();
+    }
+
     private async processApiTranscription(audioBlob: Blob): Promise<string> {
-        // TODO: Implement OpenAI Whisper API integration
-        throw new TranscriptionError(
-            'API transcription not yet implemented',
-            TranscriptionErrorCode.API_ERROR
-        );
+        if (!this.plugin.settings.openaiApiKey) {
+            throw new TranscriptionError(
+                'OpenAI API key not configured. Please add your API key in settings.',
+                TranscriptionErrorCode.API_ERROR
+            );
+        }
+
+        return this.apiClient.transcribe(audioBlob);
     }
 
     /**

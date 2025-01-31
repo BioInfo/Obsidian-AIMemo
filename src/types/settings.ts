@@ -5,6 +5,8 @@ export interface AiVoiceMemoSettings {
     saveAudioFiles: boolean;
     memoStoragePath: string;
     audioQuality: 'low' | 'medium' | 'high';
+    openaiApiKey: string;
+    validateApiKey: boolean;
 }
 
 export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
@@ -13,5 +15,7 @@ export const DEFAULT_SETTINGS: AiVoiceMemoSettings = {
     autoTranscribe: true,
     saveAudioFiles: true,
     memoStoragePath: 'voice-memos',
-    audioQuality: 'medium'
+    audioQuality: 'medium',
+    openaiApiKey: '',
+    validateApiKey: true
 };

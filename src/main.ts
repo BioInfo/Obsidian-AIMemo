@@ -121,9 +121,57 @@ export class AiVoiceMemoSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    display(): void {
+    async display(): Promise<void> {
         const { containerEl } = this;
         containerEl.empty();
+
+        // API Configuration Section
+        containerEl.createEl('h3', { text: 'API Configuration' });
+
+        const apiKeySetting = new Setting(containerEl)
+            .setName('OpenAI API Key')
+            .setDesc('Your OpenAI API key for Whisper transcription')
+            .addText(text => text
+                .setPlaceholder('sk-...')
+                .setValue(this.plugin.settings.openaiApiKey)
+                .onChange(async (value) => {
+                    this.plugin.settings.openaiApiKey = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.transcriptionService.updateSettings(this.plugin.settings);
+                })
+                .inputEl.setAttribute('type', 'password'));
+
+        // Add validate button next to API key
+        apiKeySetting.addButton(button => button
+            .setButtonText('Validate')
+            .onClick(async () => {
+                button.setDisabled(true);
+                try {
+                    await this.plugin.transcriptionService.validateApiKey();
+                    new Notice('API key is valid');
+                } catch (error) {
+                    if (error instanceof TranscriptionError) {
+                        new Notice(error.message);
+                    } else {
+                        new Notice('Failed to validate API key');
+                    }
+                } finally {
+                    button.setDisabled(false);
+                }
+            }));
+
+        new Setting(containerEl)
+            .setName('Validate API Key on Change')
+            .setDesc('Automatically validate API key when it is changed')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.validateApiKey)
+                .onChange(async (value) => {
+                    this.plugin.settings.validateApiKey = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        // Recording Configuration Section
+        containerEl.createEl('h3', { text: 'Recording Configuration' });
 
         new Setting(containerEl)
             .setName('Audio Format')
@@ -138,6 +186,9 @@ export class AiVoiceMemoSettingTab extends PluginSettingTab {
                     this.plugin.settings.audioFormat = value as 'ogg' | 'wav';
                     await this.plugin.saveSettings();
                 }));
+
+        // Transcription Configuration Section
+        containerEl.createEl('h3', { text: 'Transcription Configuration' });
 
         new Setting(containerEl)
             .setName('Transcription Model')
