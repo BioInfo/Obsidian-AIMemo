@@ -3,29 +3,38 @@
 ## Key Components and Their Interactions
 
 ### 1. Core Plugin Components
-- **VoiceRecorderManager**
+- **AiVoiceMemoPlugin** (`src/main.ts`)
+  - Main plugin entry point
+  - Manages plugin lifecycle
+  - Handles UI initialization
+  - Coordinates between components
+  - Implements settings management
+
+- **VoiceRecorderManager** (`src/managers/voice-recorder-manager.ts`)
   - Handles audio recording initialization
   - Manages recording states
   - Interfaces with Web Audio API
   - Implements compression and storage logic
+  - Supports configurable audio quality
 
+- **AiVoiceMemoSettingTab** (`src/main.ts`)
+  - Renders settings interface
+  - Handles settings validation
+  - Provides real-time settings updates
+  - Manages user preferences
+
+### 2. Planned Components
 - **TranscriptionService**
-  - Manages Whisper integration
-  - Handles both local and API-based transcription
-  - Implements transcription queue management
-  - Provides progress updates
+  - Will manage Whisper integration
+  - Will handle both local and API-based transcription
+  - Will implement transcription queue management
+  - Will provide progress updates
 
 - **NoteManager**
-  - Creates and updates markdown notes
-  - Manages folder structure
-  - Handles file naming and organization
-  - Implements backlink creation
-
-- **SettingsManager**
-  - Manages plugin configuration
-  - Handles user preferences
-  - Validates settings
-  - Provides default configurations
+  - Will create and update markdown notes
+  - Will manage folder structure
+  - Will handle file naming and organization
+  - Will implement backlink creation
 
 ### 2. User Interface Components
 - **RecordingPanel**
@@ -83,12 +92,17 @@ TranscriptionService → NoteManager → File System
 
 ## Recent Significant Changes
 
-*(To be updated as development progresses)*
+### Code Organization (2025-01-31)
+- Consolidated main plugin code into `src/main.ts`
+- Implemented proper TypeScript strict mode configuration
+- Added comprehensive settings UI with audio quality controls
+- Created modular VoiceRecorderManager with improved state management
 
-Initial setup includes:
-- Basic project structure
-- Documentation framework
-- Development environment configuration
+### Documentation Updates
+- Added detailed project structure documentation
+- Updated codebase summary to reflect current architecture
+- Established clear coding conventions and best practices
+- Created comprehensive development guidelines
 
 ## User Feedback Integration
 
